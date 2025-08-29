@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>LitSphere - Enhanced Text to Speech</title>
+    <link rel="icon" href="logotexttospeech.png" type="image/png">
+    <link rel="stylesheet" href="reader.css">
+</head>
+<body>
+    <div class="loader-container" id="loader">
+        <div class="loader"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Navigation - Matching Index Style -->
+    <nav class="navbar navbar-expand-lg custom-navbar" id="navbar">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">Lit<span>Sphere</span></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="library.html">Library</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="reader.html">Reader</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="explore.html">Explore</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container main-container" id="main-content" style="display: none;">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="tts-card fade-in-up">
+                    <!-- Speech Icon -->
+                    <div class="speech-icon">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+
+                    <h2 class="text-center mb-4" style="color: var(--primary-color); font-weight: bold;">Enhanced Text to Speech</h2>
+
+                    <!-- File Upload Area -->
+                    <div class="file-upload-area" id="file-upload-area">
+                        <i class="fas fa-cloud-upload-alt fa-3x mb-3" style="color: var(--primary-color);"></i>
+                        <h5 style="color: var(--text-primary);">Drag & Drop or Click to Upload</h5>
+                        <p style="color: var(--text-secondary);">Supports: .txt</p>
+                        <input type="file" id="file-input" class="d-none" accept=".txt,.pdf,.docx">
+                    </div>
+
+                    <!-- File Content Display -->
+                    <div id="file-content-container" style="display: none;">
+                        <pre id="file-content" class="file-content"></pre>
+                    </div>
+
+                    <!-- Text Input -->
+                    <div class="form-group mb-4">
+                        <label for="text-input" class="form-label">
+                            <i class="fas fa-edit"></i> Enter Text to Convert
+                        </label>
+                        <textarea id="text-input" class="form-control form-control-enhanced" rows="6" placeholder="Type or paste your text here..."></textarea>
+                    </div>
+
+                    <!-- Word Count -->
+                    <div class="word-count">
+                        <i class="fas fa-calculator"></i> Words: <span id="word-count">0</span> | Characters: <span id="char-count">0</span>
+                    </div>
+
+                    <!-- Language Detection -->
+                    <div class="language-info" id="language-info" style="display: none;">
+                        <i class="fas fa-globe"></i> Detected Language: <span id="detected-language">-</span>
+                    </div>
+
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <h5 class="mb-3" style="color: var(--primary-color);"><i class="fas fa-sliders-h"></i> Voice Controls</h5>
+                        
+                        <!-- Voice Selection -->
+                        <div class="form-group mb-3">
+                            <label for="voice-select" class="form-label">Voice</label>
+                            <select id="voice-select" class="form-control form-control-enhanced">
+                                <option>Loading voices...</option>
+                            </select>
+                        </div>
+
+                        <!-- Rate Control -->
+                        <div class="control-row">
+                            <label class="control-label">Rate</label>
+                            <input type="range" id="rate" class="range-slider" min="0.1" max="3" value="1" step="0.1">
+                            <div class="control-value" id="rate-value">1.0</div>
+                        </div>
+
+                        <!-- Pitch Control -->
+                        <div class="control-row">
+                            <label class="control-label">Pitch</label>
+                            <input type="range" id="pitch" class="range-slider" min="0" max="2" value="1" step="0.1">
+                            <div class="control-value" id="pitch-value">1.0</div>
+                        </div>
+
+                        <!-- Volume Control -->
+                        <div class="control-row">
+                            <label class="control-label">Volume</label>
+                            <input type="range" id="volume" class="range-slider" min="0" max="1" value="1" step="0.1">
+                            <div class="control-value" id="volume-value">1.0</div>
+                        </div>
+                    </div>
+
+                    <!-- Audio Visualizer -->
+                    <div class="audio-visualizer" id="audio-visualizer">
+                        <!-- Visualizer bars will be generated by JavaScript -->
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress-container" id="progress-container" style="display: none;">
+                        <div class="progress-bar-custom">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">Ready to speak...</div>
+                    </div>
+
+                    <!-- Control Buttons -->
+                    <div class="control-buttons">
+                        <button class="btn btn-enhanced" id="speak-btn">
+                            <i class="fas fa-play"></i> Speak
+                        </button>
+                        <button class="control-btn" id="pause-btn" disabled>
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                        <button class="control-btn" id="resume-btn" disabled>
+                            <i class="fas fa-play"></i> Resume
+                        </button>
+                        <button class="control-btn" id="stop-btn" disabled>
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button class="control-btn" id="download-btn" disabled>
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+
+                    <!-- Settings Panel -->
+                    <div class="settings-panel">
+                        <div class="settings-title">
+                            <i class="fas fa-cog"></i> Advanced Settings
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Audio Format</label>
+                                    <select id="audio-format" class="form-control form-control-enhanced">
+                                        <option value="wav">WAV (High Quality)</option>
+                                        <option value="mp3">MP3 (Compressed)</option>
+                                        <option value="ogg">OGG (Web Optimized)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Chunk Size</label>
+                                    <select id="chunk-size" class="form-control form-control-enhanced">
+                                        <option value="100">Small (100 chars)</option>
+                                        <option value="200" selected>Medium (200 chars)</option>
+                                        <option value="500">Large (500 chars)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="auto-scroll" checked>
+                                    <label class="form-check-label" for="auto-scroll">
+                                        Auto-scroll text during speech
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="highlight-words" checked>
+                                    <label class="form-check-label" for="highlight-words">
+                                        Highlight current word
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 footer-section">
+                    <h3>LitSphere</h3>
+                    <p>
+                        Revolutionizing the way text is experienced. Seamlessly transform words into lifelike speech for accessibility, productivity, and creativity.
+                    </p>
+                </div>
+
+                <div class="col-md-4 footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="library.html">Library</a></li>
+                        <li><a href="reader.html">Reader</a></li>
+                        <li><a href="explore.html">Explore</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-md-4 footer-section">
+                    <h3>Contact Us</h3>
+                    <p><a href="mailto:info.litshpere@gmail.com">info.litshpere@gmail.com</a></p>
+                    <br>
+                    <h3>Founder: Hala Abou Saad</h3>
+                    <p><a href="mailto:halaabousaed1019@gmail.com">contact.halaabousaad@gmail.com</a></p>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025 LitSphere. All rights reserved. | Giving words a voice.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="reader.js"></script>
+</body>
+</html>
+
