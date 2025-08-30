@@ -13,6 +13,7 @@
                 this.audioContext = null;
                 this.analyser = null;
                 this.dataArray = null;
+                this.detectedLanguageCode = 'en-US';
                 
                 this.initializeElements();
                 this.initializeEventListeners();
@@ -92,18 +93,10 @@
                     this.detectLanguage();
                 });
 
-                // Control events
-                this.elements.rateSlider.addEventListener('input', () => {
-                    this.elements.rateValue.textContent = parseFloat(this.elements.rateSlider.value).toFixed(1);
-                });
-
-                this.elements.pitchSlider.addEventListener('input', () => {
-                    this.elements.pitchValue.textContent = parseFloat(this.elements.pitchSlider.value).toFixed(1);
-                });
-
-                this.elements.volumeSlider.addEventListener('input', () => {
-                    this.elements.volumeValue.textContent = parseFloat(this.elements.volumeSlider.value).toFixed(1);
-                });
+                // Control events with touch-friendly handling for mobile
+                this.addTouchFriendlySlider(this.elements.rateSlider, this.elements.rateValue);
+                this.addTouchFriendlySlider(this.elements.pitchSlider, this.elements.pitchValue);
+                this.addTouchFriendlySlider(this.elements.volumeSlider, this.elements.volumeValue);
 
                 // Button events
                 this.elements.speakBtn.addEventListener('click', () => this.speak());
@@ -111,6 +104,39 @@
                 this.elements.resumeBtn.addEventListener('click', () => this.resume());
                 this.elements.stopBtn.addEventListener('click', () => this.stop());
                 this.elements.downloadBtn.addEventListener('click', () => this.downloadAudio());
+            }
+
+            addTouchFriendlySlider(slider, valueDisplay) {
+                let isDragging = false;
+                
+                // Prevent page scroll when interacting with sliders on mobile
+                slider.addEventListener('touchstart', (e) => {
+                    isDragging = true;
+                    e.preventDefault();
+                }, { passive: false });
+
+                slider.addEventListener('touchmove', (e) => {
+                    if (isDragging) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                slider.addEventListener('touchend', () => {
+                    isDragging = false;
+                });
+
+                slider.addEventListener('input', () => {
+                    valueDisplay.textContent = parseFloat(slider.value).toFixed(1);
+                });
+
+                // Add visual feedback for touch
+                slider.addEventListener('touchstart', () => {
+                    slider.style.transform = 'scale(1.05)';
+                });
+
+                slider.addEventListener('touchend', () => {
+                    slider.style.transform = 'scale(1)';
+                });
             }
 
             initializeVoices() {
@@ -135,17 +161,107 @@
                     return;
                 }
 
-                this.voices.forEach((voice, index) => {
-                    const option = document.createElement('option');
-                    option.textContent = `${voice.name} (${voice.lang})`;
-                    option.value = voice.name;
-                    
-                    if (voice.default) {
-                        option.selected = true;
+                // Group voices by language for better organization
+                const voicesByLang = {};
+                this.voices.forEach((voice) => {
+                    const lang = voice.lang.split('-')[0]; // Get language code without region
+                    if (!voicesByLang[lang]) {
+                        voicesByLang[lang] = [];
                     }
-                    
-                    this.elements.voiceSelect.appendChild(option);
+                    voicesByLang[lang].push(voice);
                 });
+
+                // Add voices grouped by language
+                Object.keys(voicesByLang).sort().forEach(lang => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = this.getLanguageName(lang);
+                    
+                    voicesByLang[lang].forEach((voice) => {
+                        const option = document.createElement('option');
+                        option.textContent = `${voice.name}`;
+                        option.value = voice.name;
+                        option.setAttribute('data-lang', voice.lang);
+                        
+                        // Prefer neural/premium voices for better quality
+                        if (voice.name.toLowerCase().includes('neural') || 
+                            voice.name.toLowerCase().includes('premium') ||
+                            voice.name.toLowerCase().includes('enhanced')) {
+                            option.textContent += ' (Premium)';
+                        }
+                        
+                        optgroup.appendChild(option);
+                    });
+                    
+                    this.elements.voiceSelect.appendChild(optgroup);
+                });
+
+                // Set default voice
+                this.selectBestVoiceForLanguage(this.detectedLanguageCode);
+            }
+
+            getLanguageName(langCode) {
+                const languageNames = {
+                    'en': 'English',
+                    'es': 'Spanish',
+                    'fr': 'French',
+                    'de': 'German',
+                    'it': 'Italian',
+                    'pt': 'Portuguese',
+                    'ru': 'Russian',
+                    'ja': 'Japanese',
+                    'ko': 'Korean',
+                    'zh': 'Chinese',
+                    'ar': 'Arabic',
+                    'hi': 'Hindi',
+                    'nl': 'Dutch',
+                    'sv': 'Swedish',
+                    'da': 'Danish',
+                    'no': 'Norwegian',
+                    'fi': 'Finnish',
+                    'pl': 'Polish',
+                    'tr': 'Turkish'
+                };
+                return languageNames[langCode] || langCode.toUpperCase();
+            }
+
+            selectBestVoiceForLanguage(languageCode) {
+                const targetLang = languageCode.split('-')[0];
+                const matchingVoices = this.voices.filter(voice => 
+                    voice.lang.toLowerCase().startsWith(targetLang.toLowerCase())
+                );
+
+                if (matchingVoices.length > 0) {
+                    // Prefer neural/premium voices
+                    let bestVoice = matchingVoices.find(voice => 
+                        voice.name.toLowerCase().includes('neural') ||
+                        voice.name.toLowerCase().includes('premium') ||
+                        voice.name.toLowerCase().includes('enhanced')
+                    );
+
+                    // If no premium voice, prefer female voices as they're often clearer
+                    if (!bestVoice) {
+                        bestVoice = matchingVoices.find(voice => 
+                            voice.name.toLowerCase().includes('female') ||
+                            voice.name.toLowerCase().includes('woman') ||
+                            voice.name.toLowerCase().includes('sara') ||
+                            voice.name.toLowerCase().includes('emma') ||
+                            voice.name.toLowerCase().includes('jenny')
+                        );
+                    }
+
+                    // Fallback to first available voice for the language
+                    if (!bestVoice) {
+                        bestVoice = matchingVoices[0];
+                    }
+
+                    // Set the voice in the dropdown
+                    for (let option of this.elements.voiceSelect.options) {
+                        if (option.value === bestVoice.name) {
+                            option.selected = true;
+                            break;
+                        }
+                    }
+                }
             }
 
             initializeVisualizer() {
@@ -180,17 +296,17 @@
                     this.elements.fileContentContainer.style.display = 'block';
                     this.updateWordCount();
                     this.detectLanguage();
-                    this.showToast('File uploaded successfully!', 'success');
+                    this.showNotification('File uploaded successfully!', 'success');
                 };
 
                 reader.onerror = () => {
-                    this.showToast('Error reading file. Please try again.', 'error');
+                    this.showNotification('Error reading file. Please try again.', 'error');
                 };
 
                 if (file.type === 'text/plain') {
                     reader.readAsText(file);
                 } else {
-                    this.showToast('Please upload a valid text file (.txt)', 'error');
+                    this.showNotification('Please upload a valid text file (.txt)', 'error');
                 }
             }
 
@@ -206,44 +322,100 @@
             detectLanguage() {
                 const text = this.elements.textInput.value.trim();
                 if (text.length > 10) {
-                    const detectedLang = this.simpleLanguageDetection(text);
-                    this.elements.detectedLanguage.textContent = detectedLang;
+                    const detectedInfo = this.advancedLanguageDetection(text);
+                    this.detectedLanguageCode = detectedInfo.code;
+                    this.elements.detectedLanguage.textContent = detectedInfo.name;
                     this.elements.languageInfo.style.display = 'block';
+                    
+                    // Automatically select the best voice for detected language
+                    this.selectBestVoiceForLanguage(this.detectedLanguageCode);
                 } else {
                     this.elements.languageInfo.style.display = 'none';
                 }
             }
 
-            simpleLanguageDetection(text) {
-                // Basic language detection
-                if (/[àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/i.test(text)) {
-                    return 'Romance Language (French/Spanish/Italian)';
-                } else if (/[äöüß]/i.test(text)) {
-                    return 'German';
-                } else if (/[а-яё]/i.test(text)) {
-                    return 'Russian';
-                } else if (/[ひらがなカタカナ漢字]/i.test(text)) {
-                    return 'Japanese';
-                } else if (/[가-힣]/i.test(text)) {
-                    return 'Korean';
-                } else if (/[一-龯]/i.test(text)) {
-                    return 'Chinese';
-                } else if (/[ا-ي]/i.test(text)) {
-                    return 'Arabic';
-                } else {
-                    return 'English';
+            advancedLanguageDetection(text) {
+                // More comprehensive language detection
+                const patterns = {
+                    'fr-FR': {
+                        name: 'French',
+                        patterns: [/\b(le|la|les|un|une|des|et|de|du|dans|pour|avec|sur|par|ce|cette|ces|qui|que|dont|où)\b/gi,
+                                 /[àâäéèêëïîôöùûüÿç]/gi]
+                    },
+                    'es-ES': {
+                        name: 'Spanish', 
+                        patterns: [/\b(el|la|los|las|un|una|y|de|en|a|por|con|para|que|es|son|está|están)\b/gi,
+                                 /[áéíóúñü]/gi]
+                    },
+                    'de-DE': {
+                        name: 'German',
+                        patterns: [/\b(der|die|das|ein|eine|und|oder|mit|von|zu|in|auf|für|ist|sind|war|waren)\b/gi,
+                                 /[äöüß]/gi]
+                    },
+                    'it-IT': {
+                        name: 'Italian',
+                        patterns: [/\b(il|la|lo|gli|le|un|una|e|di|a|da|in|con|su|per|che|è|sono|era|erano)\b/gi,
+                                 /[àèéìíîòóù]/gi]
+                    },
+                    'pt-PT': {
+                        name: 'Portuguese',
+                        patterns: [/\b(o|a|os|as|um|uma|e|de|em|para|com|por|que|é|são|era|eram)\b/gi,
+                                 /[áâãàéêíóôõú]/gi]
+                    },
+                    'ru-RU': {
+                        name: 'Russian',
+                        patterns: [/[а-яё]/gi]
+                    },
+                    'ja-JP': {
+                        name: 'Japanese',
+                        patterns: [/[ひらがなカタカナ漢字]/gi, /[一-龯]/gi]
+                    },
+                    'ko-KR': {
+                        name: 'Korean',
+                        patterns: [/[가-힣]/gi]
+                    },
+                    'zh-CN': {
+                        name: 'Chinese',
+                        patterns: [/[一-龯]/gi]
+                    },
+                    'ar-SA': {
+                        name: 'Arabic',
+                        patterns: [/[ا-ي]/gi]
+                    },
+                    'hi-IN': {
+                        name: 'Hindi',
+                        patterns: [/[अ-ह]/gi]
+                    }
+                };
+
+                let bestMatch = { code: 'en-US', name: 'English', score: 0 };
+
+                for (const [langCode, langInfo] of Object.entries(patterns)) {
+                    let score = 0;
+                    for (const pattern of langInfo.patterns) {
+                        const matches = text.match(pattern);
+                        if (matches) {
+                            score += matches.length;
+                        }
+                    }
+                    
+                    if (score > bestMatch.score) {
+                        bestMatch = { code: langCode, name: langInfo.name, score };
+                    }
                 }
+
+                return bestMatch;
             }
 
             speak() {
                 if (this.synth.speaking) {
-                    this.showToast('Already speaking. Please wait or stop current speech.', 'warning');
+                    this.showNotification('Already speaking. Please wait or stop current speech.', 'warning');
                     return;
                 }
 
                 const text = this.elements.textInput.value.trim();
                 if (!text) {
-                    this.showToast('Please enter some text to speak.', 'warning');
+                    this.showNotification('Please enter some text to speak.', 'warning');
                     return;
                 }
 
@@ -270,11 +442,12 @@
 
                 this.currentUtterance = new SpeechSynthesisUtterance(chunk);
                 
-                // Set voice
+                // Set voice based on current selection
                 const selectedVoiceName = this.elements.voiceSelect.value;
                 const selectedVoice = this.voices.find(voice => voice.name === selectedVoiceName);
                 if (selectedVoice) {
                     this.currentUtterance.voice = selectedVoice;
+                    this.currentUtterance.lang = selectedVoice.lang; // Ensure language is set
                 }
 
                 // Set parameters
@@ -296,7 +469,7 @@
 
                 this.currentUtterance.onerror = (event) => {
                     console.error('Speech synthesis error:', event);
-                    this.showToast('Speech synthesis error occurred.', 'error');
+                    this.showNotification('Speech synthesis error occurred.', 'error');
                     this.onSpeechEnd();
                 };
 
@@ -309,7 +482,7 @@
                     this.isPaused = true;
                     this.updateButtonStates();
                     this.elements.progressText.textContent = 'Paused';
-                    this.showToast('Speech paused', 'info');
+                    this.showNotification('Speech paused', 'info');
                 }
             }
 
@@ -319,7 +492,7 @@
                     this.isPaused = false;
                     this.updateButtonStates();
                     this.elements.progressText.textContent = 'Speaking...';
-                    this.showToast('Speech resumed', 'info');
+                    this.showNotification('Speech resumed', 'info');
                 }
             }
 
@@ -331,7 +504,7 @@
                 this.updateButtonStates();
                 this.elements.progressContainer.style.display = 'none';
                 this.stopVisualizer();
-                this.showToast('Speech stopped', 'info');
+                this.showNotification('Speech stopped', 'info');
             }
 
             onSpeechEnd() {
@@ -341,7 +514,7 @@
                 this.elements.progressFill.style.width = '100%';
                 this.elements.progressText.textContent = 'Completed';
                 this.stopVisualizer();
-                this.showToast('Speech completed!', 'success');
+                this.showNotification('Speech completed!', 'success');
                 
                 setTimeout(() => {
                     this.elements.progressContainer.style.display = 'none';
@@ -393,47 +566,53 @@
             }
 
             downloadAudio() {
-                this.showToast('Audio download feature coming soon! Currently, you can use your browser\'s built-in recording tools.', 'info');
+                this.showNotification('Audio download feature coming soon! Currently, you can use your browser\'s built-in recording tools.', 'info');
             }
 
-            showToast(message, type = 'info') {
-                const toastContainer = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                toast.className = `toast toast-custom show`;
-                toast.setAttribute('role', 'alert');
-                
-                const icons = {
-                    success: 'fas fa-check-circle',
-                    error: 'fas fa-exclamation-circle',
-                    warning: 'fas fa-exclamation-triangle',
-                    info: 'fas fa-info-circle'
-                };
-
-                toast.innerHTML = `
-                    <div class="toast-header">
-                        <i class="${icons[type]} me-2"></i>
-                        <strong class="me-auto">LitSphere</strong>
-                        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-                    </div>
-                    <div class="toast-body">
-                        ${message}
-                    </div>
+            // Replaced showToast with showNotification to remove Bootstrap toast dependency
+            showNotification(message, type = 'info') {
+                // Create a simple notification without Bootstrap alerts
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${type === 'success' ? '#00d1b2' : type === 'error' ? '#ff3860' : type === 'warning' ? '#ffdd57' : '#3273dc'};
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                    z-index: 10000;
+                    max-width: 300px;
+                    font-weight: 500;
+                    animation: slideIn 0.3s ease;
                 `;
 
-                toastContainer.appendChild(toast);
+                notification.textContent = message;
+                document.body.appendChild(notification);
 
-                // Auto remove after 5 seconds
+                // Auto remove after 4 seconds
                 setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
+                    if (notification.parentNode) {
+                        notification.style.animation = 'slideOut 0.3s ease';
+                        setTimeout(() => {
+                            if (notification.parentNode) {
+                                notification.parentNode.removeChild(notification);
+                            }
+                        }, 300);
                     }
-                }, 5000);
+                }, 4000);
 
                 // Add click to close
-                const closeBtn = toast.querySelector('.btn-close');
-                closeBtn.addEventListener('click', () => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
+                notification.addEventListener('click', () => {
+                    if (notification.parentNode) {
+                        notification.style.animation = 'slideOut 0.3s ease';
+                        setTimeout(() => {
+                            if (notification.parentNode) {
+                                notification.parentNode.removeChild(notification);
+                            }
+                        }, 300);
                     }
                 });
             }
@@ -454,3 +633,4 @@
                 mainContent.style.display = "block";
             }, 1000);
         });
+
