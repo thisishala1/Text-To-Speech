@@ -633,19 +633,33 @@
             transform: scale(1.02);
         }
 
-        /* Footer Styles */
+        /* Footer */
         footer {
-            background: var(--gradient-card);
-            color: var(--text-primary);
+            background: #000000;
             padding: 3rem 0 1rem;
-            margin-top: 4rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(0, 209, 178, 0.2);
+        }
+
+        .footer-section {
+            margin-bottom: 2rem;
         }
 
         .footer-section h3 {
-            color: var(--primary-color);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
             margin-bottom: 1rem;
-            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .footer-section p,
+        .footer-section a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section a:hover {
+            color: var(--primary-color);
         }
 
         .footer-section ul {
@@ -657,32 +671,14 @@
             margin-bottom: 0.5rem;
         }
 
-        .footer-section ul li a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        .footer-section ul li a:hover {
-            color: var(--primary-color);
-        }
-
-        .footer-section p a {
-            color: var(--primary-color);
-            text-decoration: none;
-        }
-
-        .footer-section p a:hover {
-            text-decoration: underline;
-        }
-
         .footer-bottom {
             text-align: center;
-            margin-top: 2rem;
             padding-top: 2rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 2rem;
             color: var(--text-secondary);
         }
+
 
         /* Fade in animation */
         .fade-in-up {
